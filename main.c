@@ -18,14 +18,14 @@
 // uint8_t out_buf[BUF_LEN] = {0};
 // uint8_t in_buf[BUF_LEN];
 
-uint8_t cmd;
-uint8_t status_buf[1] = {0};
+// uint8_t cmd;
+// uint8_t status = 0;
 uint8_t in_buf[5] = {0};
 uint8_t out_buf[5];
 
 
 void print_byte(uint8_t byte);
-void print_debug();
+void print_debug(int len);
 
 int main() {
 	//Set up UART
@@ -37,16 +37,19 @@ int main() {
 	gpio_set_function(PICO_DEFAULT_UART_RX_PIN, GPIO_FUNC_UART);
 
 	//Set up SPI
-	spi_init(spi_default, 1000 * 1000); //1 MHz SCK
+	spi_init(SPI_ID, 1000 * 1000); //1 MHz SCK
 
-	gpio_set_function(PICO_DEFAULT_SPI_TX_PIN, GPIO_FUNC_SPI);
-	gpio_set_function(PICO_DEFAULT_SPI_RX_PIN, GPIO_FUNC_SPI);
-	gpio_set_function(PICO_DEFAULT_SPI_SCK_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(MOSI_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(MISO_PIN, GPIO_FUNC_SPI);
+	gpio_set_function(SCK_PIN, GPIO_FUNC_SPI);
 	//CSN needs to be software-controlled, otherwise it will go inactive between each byte (no bueno)
 	// gpio_set_function(PICO_DEFAULT_SPI_CSN_PIN, GPIO_FUNC_SIO);
-	gpio_init(PICO_DEFAULT_SPI_CSN_PIN);
-	gpio_set_dir(PICO_DEFAULT_SPI_CSN_PIN, GPIO_OUT);
+	gpio_init(CSN_PIN);
+	gpio_set_dir(CSN_PIN, GPIO_OUT);
 	set_csn(1);
+	gpio_init(CE_PIN);
+	gpio_set_dir(CE_PIN, GPIO_OUT);
+	set_ce(0);
 
 	//Set up LED pin
 	const uint LED_PIN = PICO_DEFAULT_LED_PIN;
@@ -62,24 +65,105 @@ int main() {
 	// for (int i = 0; i < BUF_LEN; i++)
 	// 	out_buf[i] = i;
 
+	uart_puts(uart_default, "\n------------------------------------\r\n");
+	uart_puts(uart_default, "Retrieving config\r\n");
+	nrf_get_config(&nrf_status, in_buf);
+	print_debug(1);
+
+	// uart_puts(uart_default, "\nWriting config\r\n");
+	// uint8_t new_config = 0b00001010;
+	// nrf_set_config(&nrf_status, &new_config);
+
+	// uart_puts(uart_default, "\nVerifying config\r\n");
+	// nrf_get_config(&nrf_status, in_buf);
+	// print_debug(1);
+
+	uart_puts(uart_default, "\nPrinting FIFO status\r\n");
+	nrf_get_fifo_status(&nrf_status, in_buf);
+	print_debug(1);
+
+	uint8_t val = 0b00111111;
+	uart_puts(uart_default, "\nRX_PW_P0 value\r\n");
+	nrf_rd_cmd(REG_RD_CMD | REG_RX_PW_P0, &nrf_status, in_buf, 1);
+	print_debug(1);
+	nrf_wr_cmd(REG_WR_CMD | REG_RX_PW_P0, &nrf_status, &val, 1);
+	uart_puts(uart_default, "\nRX_PW_P0 value\r\n");
+	nrf_rd_cmd(REG_RD_CMD | REG_RX_PW_P0, &nrf_status, in_buf, 1);
+	print_debug(1);
+
+	uart_puts(uart_default, "\nStarting RX\r\n");
+	nrf_start_rx();
+
+	sleep_ms(5);
+
+	uart_puts(uart_default, "\nPrinting FIFO status\r\n");
+	nrf_get_fifo_status(&nrf_status, in_buf);
+	print_debug(1);
+
+	// uart_puts(uart_default, "\nAdding to TX FIFO\r\n");
+	// nrf_push_tx_fifo(69420);
+
+	// uart_puts(uart_default, "\nPrinting FIFO status\r\n");
+	// nrf_get_fifo_status(&nrf_status, in_buf);
+	// print_debug(1);
+
+	// uart_puts(uart_default, "\nTransmitting\r\n");
+	// nrf_start_tx();
+	// sleep_ms(1);
+	// nrf_stop_tx();
+
+	// uart_puts(uart_default, "\nPrinting FIFO status\r\n");
+	// nrf_get_fifo_status(&nrf_status, in_buf);
+	// print_debug(1);
+
+	uart_puts(uart_default, "\nRetrieving config\r\n");
+	nrf_get_config(&nrf_status, in_buf);
+	print_debug(1);
+
 	while (true) {
-		// cmd = 0b11111111; //NOP
-		// cmd = 0b00000000; //Read reg 0x00 (CONFIG)
-		cmd = 0b00001010; //Read reg 0x0A (RX_ADDR_P0)
-		// cmd = 0b00000101; //Read reg 0x05 (RF_CH)
-		// nrf_cmd(cmd, status_buf);
-		// nrf_rd_cmd(cmd, status_buf, in_buf, 1);
-		nrf_rd_cmd(cmd, status_buf, in_buf, 5);
-		print_debug();
+		uart_puts(uart_default, "\nPrinting FIFO status\r\n");
+		nrf_get_fifo_status(&nrf_status, in_buf);
+		print_debug(1);
 
-		cmd = 0b00101010; //Write to reg 0x0A (RX_ADDR_P0)
-		out_buf[0] = 0b11111111; //Only change the LSB of the address
-		nrf_wr_cmd(cmd, status_buf, out_buf, 5);
-		print_debug();
+		//To Transmit
+		//Power on
+		//Turn off auto retransmit (SETUP_RETR) and acknowledgement (EN_AA) ???
+		//Verify TX address
+		//Put data to transmit into FIFO
+		//Clear RX bit
+		//Chip enable
 
-		cmd = 0b00001010; //Read reg 0x0A (RX_ADDR_P0)
-		nrf_rd_cmd(cmd, status_buf, in_buf, 5);
-		print_debug();
+		//To Receive:
+		//Power on
+		//Ensure that the RX pipe is enabled (0 and 1 are by default)
+		//Verify RX pipe address
+		//Ensure the data pipe has a number set for payload bytes (RX_PW_Px)
+		//Enable RX bit
+		//Chip enable
+
+
+
+
+
+
+
+		// // cmd = 0b11111111; //NOP
+		// // cmd = 0b00000000; //Read reg 0x00 (CONFIG)
+		// cmd = 0b00001010; //Read reg 0x0A (RX_ADDR_P0)
+		// // cmd = 0b00000101; //Read reg 0x05 (RF_CH)
+		// // nrf_cmd(cmd, status_buf);
+		// // nrf_rd_cmd(cmd, status_buf, in_buf, 1);
+		// nrf_rd_cmd(cmd, status_buf, in_buf, 5);
+		// print_debug();
+
+		// cmd = 0b00101010; //Write to reg 0x0A (RX_ADDR_P0)
+		// out_buf[0] = 0b11111111; //Only change the LSB of the address
+		// nrf_wr_cmd(cmd, status_buf, out_buf, 5);
+		// print_debug();
+
+		// cmd = 0b00001010; //Read reg 0x0A (RX_ADDR_P0)
+		// nrf_rd_cmd(cmd, status_buf, in_buf, 5);
+		// print_debug();
 		
 		//Toggle LED
 		gpio_put(LED_PIN, !gpio_get(LED_PIN));
@@ -102,18 +186,18 @@ void print_byte(uint8_t byte) {
 	}
 }
 
-void print_debug() {
+void print_debug(int len) {
 	//Send data over UART
-	uart_puts(uart_default, "Command: ");
-	print_byte(cmd);
-	uart_puts(uart_default, "\r\n");
+	// uart_puts(uart_default, "Command: ");
+	// print_byte(cmd);
+	// uart_puts(uart_default, "\r\n");
 
 	uart_puts(uart_default, "Status: ");
-	print_byte(status_buf[0]);
+	print_byte(nrf_status);
 	uart_puts(uart_default, "\r\n");
 
 	uart_puts(uart_default, "Received Data: ");
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < len; i++)
 		print_byte(in_buf[i]);
 	uart_puts(uart_default, "\r\n");
 }
