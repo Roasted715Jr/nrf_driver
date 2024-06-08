@@ -30,12 +30,12 @@ void nrf_power_off() {
 
 void nrf_start_tx() {
 	nrf_set_rx_bit(false);
-	set_ce(true);
+	nrf_ce(true);
 }
 
 void nrf_stop_tx() {
 	//Turn off CE so that we can perform register writes if still in TX Mode
-	set_ce(false);
+	nrf_ce(false);
 
 	// //Go to power down state to ensure we can exit both TX Mode and Standy-II
 	// nrf_power_off();
@@ -43,12 +43,12 @@ void nrf_stop_tx() {
 
 void nrf_start_rx() {
 	nrf_set_rx_bit(true);
-	set_ce(true);
+	nrf_ce(true);
 }
 
 void nrf_stop_rx() {
 	//Turn off CE and go into Stanby-I
-	set_ce(false);
+	nrf_ce(false);
 }
 
 void nrf_set_rx_bit(bool bit) {
@@ -75,6 +75,14 @@ void nrf_push_tx_fifo(uint8_t* data_src, int len) {
 	nrf_wr_cmd(W_TX_PAYLOAD_CMD, &nrf_status, data_src, len);
 }
 
+void nrf_get_rx_addr(uint8_t* status_dst, uint8_t* addr_dst) {
+
+}
+
+void nrf_set_rx_addr(uint8_t* status_dst, uint8_t* addr_src, int len) {
+
+}
+
 //TODO: Utilize actual address width set in SETUP_AW
 void nrf_get_tx_addr(uint8_t* status_dst, uint8_t* addr_dst) {
 	nrf_rd_cmd(REG_RD_CMD | REG_TX_ADDR, status_dst, addr_dst, 5);
@@ -90,25 +98,25 @@ void nrf_rd_cmd(uint8_t cmd, uint8_t* status_dst, uint8_t* data_dst, int len) {
 	// uint8_t cmd_buf[1];
 	// cmd_buf[0] = cmd;
 
-	set_csn(false);
+	nrf_csn(false);
 
 	// spi_write_read_blocking(spi_default, cmd_buf, status_dst, 1);
 	spi_write_read_blocking(SPI_ID, &cmd, status_dst, 1);
 	spi_read_blocking(SPI_ID, 0, data_dst, len);
 
-	set_csn(true);
+	nrf_csn(true);
 
 	//Flip the bytes
 	// normalize_data(data_dst, len);
 }
 
 void nrf_wr_cmd(uint8_t cmd, uint8_t* status_dst, uint8_t* data_src, int len) {
-	set_csn(false);
+	nrf_csn(false);
 
 	spi_write_read_blocking(SPI_ID, &cmd, status_dst, 1);
 	spi_write_blocking(SPI_ID, data_src, len);
 
-	set_csn(true);
+	nrf_csn(true);
 }
 
 void nrf_cmd(uint8_t cmd, uint8_t* status_dst) {
@@ -116,19 +124,19 @@ void nrf_cmd(uint8_t cmd, uint8_t* status_dst) {
 	// uint8_t cmd_buf[1];
 	// cmd_buf[0] = cmd;
 
-	set_csn(false);
+	nrf_csn(false);
 
 	// spi_write_read_blocking(spi_default, cmd_buf, status_dst, 1);
 	spi_write_read_blocking(SPI_ID, &cmd, status_dst, 1);
 
-	set_csn(true);
+	nrf_csn(true);
 }
 
-void set_csn(bool val) {
+void nrf_csn(bool val) {
 	gpio_put(CSN_PIN, val);
 }
 
-void set_ce(bool val) {
+void nrf_ce(bool val) {
 	gpio_put(CE_PIN, val);
 }
 

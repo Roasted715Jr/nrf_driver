@@ -76,6 +76,7 @@ void nrf_set_config(uint8_t* status_dst, uint8_t* config_src);
 //Change/check status register
 //Change/check receive address for pipe
 void nrf_get_rx_addr(uint8_t* status_dst, uint8_t* addr_dst);
+void nrf_set_rx_addr(uint8_t* status_dst, uint8_t* addr_src, int len);
 //Change/check transmit address
 void nrf_get_tx_addr(uint8_t* status_dst, uint8_t* addr_dst);
 void nrf_set_tx_addr(uint8_t* status_dst, uint8_t* addr_src, int len);
@@ -100,8 +101,8 @@ void nrf_set_rx_bit(bool bit);
 void nrf_rd_cmd(uint8_t cmd, uint8_t* status_dst, uint8_t* data_dst, int len);
 void nrf_wr_cmd(uint8_t cmd, uint8_t* status_dst, uint8_t* data_src, int len);
 void nrf_cmd(uint8_t cmd, uint8_t* status_dst);
-void set_csn(bool val);
-void set_ce(bool val);
+void nrf_csn(bool val);
+void nrf_ce(bool val);
 void normalize_data(uint8_t* data, int size);
 
 #endif
